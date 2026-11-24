@@ -1,0 +1,48 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "gauss-studio"
+version = "0.1.0"
+description = "Интерактивная среда для преобразований матриц, поиска обратной и решения матричных уравнений"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Gauss Studio" }]
+keywords = ["linear-algebra", "gauss", "matrix", "education", "fastapi"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: FastAPI",
+    "Intended Audience :: Education",
+]
+dependencies = [
+    "fastapi>=0.115.0,<1.0.0",
+    "uvicorn>=0.32.0,<1.0.0",
+]
+
+[project.scripts]
+gauss-studio = "gauss_studio.__main__:main"
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.0",
+    "pytest>=8.3.0",
+    "ruff>=0.8.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/gauss_studio"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+exclude = [".artifacts", ".venv"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]

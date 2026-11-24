@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080a12">
+  <meta name="description" content="Gauss Studio — красивая интерактивная среда для элементарных преобразований расширенных матриц. Точные дроби, подсказки и анимации.">
+  <title>Gauss Studio — лаборатория строк</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <canvas id="confetti" aria-hidden="true"></canvas>
+  <div class="ambient" aria-hidden="true">
+    <span class="orb orb-a"></span>
+    <span class="orb orb-b"></span>
+    <span class="orb orb-c"></span>
+    <span class="grid-plane"></span>
+    <span class="grain"></span>
+  </div>
+
+  <header class="topbar">
+    <a class="brand" href="/" aria-label="Gauss Studio — на главную">
+      <span class="brand-mark" aria-hidden="true">
+        <span class="brand-g">G</span>
+        <span class="brand-orbit"></span>
+      </span>
+      <span class="brand-type">
+        <strong>GAUSS</strong>
+        <em>STUDIO</em>
+      </span>
+    </a>
+
+    <div class="topbar-status" aria-label="Режим точной арифметики">
+      <span class="pulse-dot"></span>
+      <span>точные дроби</span>
+      <span class="slash">/</span>
+      <span>без округлений</span>
+    </div>
+
+    <nav class="top-actions" aria-label="Настройки">
+      <button class="icon-btn" id="soundBtn" type="button" title="Звук включён" aria-label="Переключить звук" aria-pressed="true">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5 6.5 9H3v6h3.5L11 19V5Z"/><path class="sound-wave" d="M15 9.5a4 4 0 0 1 0 5"/><path class="sound-wave" d="M17.8 7a8 8 0 0 1 0 10"/></svg>
+      </button>
+      <button class="ghost-btn help-btn" id="helpBtn" type="button">
+        <span>Как играть</span><kbd>?</kbd>
+      </button>
+      <button class="solid-btn compact" id="newBtn" type="button">
+        <span class="plus" aria-hidden="true">+</span>
+        <span>Новая матрица</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="app-shell">
+    <section class="stage" aria-label="Рабочая доска">
+      <div class="stage-head">
+        <div class="stage-title">
+          <p class="kicker"><span class="kicker-line"></span>доска <span id="boardIndex">01</span></p>
+          <h1 id="stageTitle"><span id="stageTitleLead">Соберите</span> <span class="grad-text" id="stageTitleAccent">ступенчатый вид</span></h1>
+        </div>
+        <div class="goal-switch" role="group" aria-label="Режим и цель преобразований">
+          <button type="button" data-goal="echelon" class="active" aria-pressed="true">Ступенчатый</button>
+          <button type="button" data-goal="rref" aria-pressed="false">Приведённый</button>
+          <button type="button" data-goal="inverse" aria-pressed="false"><span class="goal-symbol">A⁻¹</span> Обратная</button>
+          <button type="button" data-goal="equation" aria-pressed="false"><span class="goal-symbol">X</span> A·X=B</button>
+        </div>
+      </div>
+
+      <div class="mission-card">
+        <div class="mission-top">
+          <span class="mission-label">ЦЕЛЬ</span>
+          <span class="mission-name" id="presetName">Классика 3×3</span>
+          <span class="mission-moves"><strong id="remainingMoves">6</strong> <span id="remainingWord">ходов</span></span>
+        </div>
+        <div class="progress-track" role="progressbar" aria-label="Прогресс к цели" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <span class="progress-fill" id="progressBar"></span>
+        </div>
+        <p class="mission-hint" id="missionHint">Сделайте ведущие элементы единицами и обнулите всё под ними.</p>
+      </div>
+
+      <div class="matrix-card" id="matrixCard">
+        <div class="matrix-topline">
+          <div class="selection-legend" id="selectionLegend">
+            <span class="legend-pill legend-source"><i>1</i> откуда</span>
+            <span class="legend-pill legend-target"><i>2</i> куда</span>
+            <button class="selection-clear" id="clearSelectionBtn" type="button" title="Сбросить выбор (Esc)" aria-label="Сбросить выбор строк">сброс</button>
+          </div>
+          <div class="matrix-tools">
+            <button class="tool-btn" id="undoBtn" type="button" title="Отменить (Ctrl+Z)" aria-label="Отменить" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7 4 12l5 5"/><path d="M4 12h9a6 6 0 0 1 6 6"/></svg>
+            </button>
+            <button class="tool-btn" id="redoBtn" type="button" title="Повторить (Ctrl+Shift+Z)" aria-label="Повторить" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 7 5 5-5 5"/><path d="M20 12h-9a6 6 0 0 0-6 6"/></svg>
+            </button>
+            <span class="tool-divider"></span>
+            <button class="tool-btn" id="resetBtn" type="button" title="Вернуться к исходной матрице" aria-label="Сбросить преобразования">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="matrix-viewport">
+          <div class="matrix-bracket bracket-left" aria-hidden="true"></div>
+          <div class="matrix-scroll" id="matrixScroll">
+            <div class="matrix" id="matrix" role="grid" aria-label="Расширенная матрица"></div>
+            <svg class="flow-overlay" id="flowOverlay" aria-hidden="true">
+              <defs>
+                <marker id="flowArrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
+                  <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"></path>
+                </marker>
+                <filter id="flowGlow" x="-50%" y="-50%" width="200%" height="200%">
+                  <feGaussianBlur stdDeviation="3" result="blur"></feGaussianBlur>
+                  <feMerge><feMergeNode in="blur"></feMergeNode><feMergeNode in="SourceGraphic"></feMergeNode></feMerge>
+                </filter>
+              </defs>
+              <path id="flowPath" pathLength="100"></path>
+              <g id="flowBadge"><rect rx="9" width="58" height="24"></rect><text x="29" y="16" text-anchor="middle">− R1</text></g>
+            </svg>
+          </div>
+          <div class="matrix-bracket bracket-right" aria-hidden="true"></div>
+        </div>
+
+        <div class="preview-bar" id="previewBar" aria-live="polite">
+          <div class="preview-caption">
+            <span class="preview-spark" aria-hidden="true"></span>
+            <span id="previewCaption">выберите операцию</span>
+          </div>
+          <div class="preview-row" id="previewValues"></div>
+        </div>
+
+        <div class="matrix-foot">
+          <span id="matrixSize">3 × 4</span>
+          <span class="dot-sep"></span>
+          <span id="matrixKind">расширенная матрица</span>
+          <span class="matrix-foot-spacer"></span>
+          <span class="shortcut-note">клик по строке <span class="shortcut-arrow">·</span> шаг 1 → 2</span>
+        </div>
+      </div>
+
+      <div class="control-dock" aria-label="Панель преобразований">
+        <div class="op-switch" role="tablist" aria-label="Операция">
+          <button type="button" class="op-tab active" data-op="subtract" role="tab" aria-selected="true">
+            <span class="op-glyph">−</span><span>вычесть</span><kbd>1</kbd>
+          </button>
+          <button type="button" class="op-tab" data-op="add" role="tab" aria-selected="false">
+            <span class="op-glyph">+</span><span>прибавить</span><kbd>2</kbd>
+          </button>
+          <button type="button" class="op-tab" data-op="swap" role="tab" aria-selected="false">
+            <span class="op-glyph">⇄</span><span>поменять</span><kbd>3</kbd>
+          </button>
+          <button type="button" class="op-tab" data-op="scale" role="tab" aria-selected="false">
+            <span class="op-glyph">×</span><span>умножить</span><kbd>4</kbd>
+          </button>
+        </div>
+
+        <div class="action-row">
+          <div class="factor-field" id="factorField">
+            <span class="factor-label">множитель</span>
+            <div class="factor-control">
+              <button type="button" id="factorDown" aria-label="Уменьшить множитель">−</button>
+              <input id="factorInput" type="text" value="1" inputmode="text" autocomplete="off" aria-label="Множитель" spellcheck="false">
+              <button type="button" id="factorUp" aria-label="Увеличить множитель">+</button>
+            </div>
+            <div class="factor-quick" id="factorQuick">
+              <button type="button" data-factor="1" class="active">1</button>
+              <button type="button" data-factor="2">2</button>
+              <button type="button" data-factor="3">3</button>
+              <button type="button" data-factor="1/2">½</button>
+              <button type="button" data-factor="1/3">⅓</button>
+            </div>
+          </div>
+
+          <div class="expression-box">
+            <span class="expression-label">получится</span>
+            <span class="expression" id="expression" aria-live="polite">R? − R?</span>
+          </div>
+
+          <button type="button" class="apply-btn" id="applyBtn" disabled>
+            <span class="apply-arrow" aria-hidden="true">→</span>
+            <span id="applyLabel">Вычесть</span>
+            <kbd>↵</kbd>
+          </button>
+        </div>
+        <p class="dock-hint" id="dockHint"><span class="dock-step">01</span> Нажмите на строку-источник, затем на строку-цель.</p>
+      </div>
+    </section>
+
+    <aside class="sidebar" aria-label="Состояние и история">
+      <section class="panel status-panel">
+        <header class="panel-head">
+          <div class="panel-title"><span class="panel-index">01</span> <span id="statusPanelTitle">Система</span></div>
+          <span class="status-pill" id="statusPill">совместна</span>
+        </header>
+        <div class="rank-grid">
+          <div class="rank-stat"><span class="rank-value" id="rankValue">3</span><span class="rank-label" id="rankLabel">rank A</span></div>
+          <div class="rank-stat"><span class="rank-value" id="freeValue">0</span><span class="rank-label" id="freeLabel">свободных</span></div>
+          <div class="rank-stat"><span class="rank-value" id="zeroValue">0</span><span class="rank-label" id="zeroLabel">нулевых строк</span></div>
+        </div>
+        <div class="pivot-map" id="pivotMap" aria-label="Ведущие столбцы"></div>
+        <div class="solution-slot" id="solutionSlot">
+          <p class="solution-empty">Решите матрицу, чтобы увидеть ответ.</p>
+        </div>
+      </section>
+
+      <section class="panel hint-panel">
+        <header class="panel-head">
+          <div class="panel-title"><span class="panel-index">02</span> Подсказка</div>
+          <button class="text-btn" id="hintBtn" type="button">Подсказать <kbd>H</kbd></button>
+        </header>
+        <div class="hint-slot" id="hintSlot">
+          <div class="hint-empty">
+            <span class="hint-spark" aria-hidden="true">✦</span>
+            <p>Застряли? Gauss подскажет следующий разумный ход — без готового ответа.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel history-panel">
+        <header class="panel-head">
+          <div class="panel-title"><span class="panel-index">03</span> Ходы</div>
+          <span class="history-count" id="historyCount">1</span>
+        </header>
+        <ol class="history-list" id="historyList" aria-label="История преобразований"></ol>
+      </section>
+
+      <section class="panel collection-panel">
+        <header class="panel-head">
+          <div class="panel-title"><span class="panel-index">04</span> Коллекция</div>
+          <span class="collection-count" id="collectionCount">0 / 4</span>
+        </header>
+        <div class="badge-grid" id="badgeGrid"></div>
+      </section>
+    </aside>
+  </main>
+
+  <footer class="footer">
+    <span>Gauss Studio <span class="footer-dot">·</span> лаборатория строк</span>
+    <span class="footer-meta">Python / FastAPI <span class="footer-dot">·</span> точная арифметика <span class="footer-dot">·</span> <span id="footerVersion">v0.1</span></span>
+  </footer>
+
+  <div class="modal-layer" id="newModal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="newModalTitle">
+      <header class="modal-head">
+        <div>
+          <p class="kicker"><span class="kicker-line"></span>новая доска</p>
+          <h2 id="newModalTitle">Соберите матрицу</h2>
+        </div>
+        <button class="icon-btn close-btn" type="button" data-close-modal aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+
+      <div class="modal-body">
+        <div class="builder-pane">
+          <div class="builder-controls">
+            <div class="mini-stepper">
+              <span class="mini-label" id="varsLabel">неизвестных</span>
+              <div class="stepper">
+                <button type="button" data-step="vars" data-delta="-1" aria-label="Меньше неизвестных">−</button>
+                <output id="varsCount">3</output>
+                <button type="button" data-step="vars" data-delta="1" aria-label="Больше неизвестных">+</button>
+              </div>
+            </div>
+            <div class="mini-stepper">
+              <span class="mini-label" id="rowsLabel">уравнений</span>
+              <div class="stepper">
+                <button type="button" data-step="rows" data-delta="-1" aria-label="Меньше уравнений">−</button>
+                <output id="rowsCount">3</output>
+                <button type="button" data-step="rows" data-delta="1" aria-label="Больше уравнений">+</button>
+              </div>
+            </div>
+            <label class="toggle-control" id="rhsToggleControl">
+              <span class="mini-label">правая часть</span>
+              <span class="switch">
+                <input type="checkbox" id="augToggle" checked>
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+              </span>
+            </label>
+            <div class="mini-stepper" id="rhsColsControl" hidden>
+              <span class="mini-label" id="rhsColsLabel">столбцов B</span>
+              <div class="stepper">
+                <button type="button" data-step="rhsCols" data-delta="-1" aria-label="Меньше столбцов B">−</button>
+                <output id="rhsColsCount">1</output>
+                <button type="button" data-step="rhsCols" data-delta="1" aria-label="Больше столбцов B">+</button>
+              </div>
+            </div>
+          </div>
+          <p class="inverse-note" id="inverseNote" hidden>
+            <span class="inverse-note-icon">A⁻¹</span>
+            <span>Режим обратной матрицы: введите квадратную <strong>A</strong>. Единичная <strong>I</strong> добавится справа автоматически.</span>
+          </p>
+          <p class="inverse-note equation-note" id="equationNote" hidden>
+            <span class="inverse-note-icon">X</span>
+            <span>Уравнение <strong>A·X = B</strong>: введите квадратную <strong>A</strong> и матрицу <strong>B</strong> справа. Приведите A к I — справа появится X.</span>
+          </p>
+          <div class="editor-scroll">
+            <div class="matrix-editor" id="matrixEditor" aria-label="Редактор матрицы"></div>
+          </div>
+          <p class="editor-hint"><span class="editor-dot"></span> Дроби вводите как <code>1/2</code> или <code>−3/4</code>. Пустая клетка считается нулём.</p>
+        </div>
+
+        <aside class="preset-pane">
+          <div class="preset-head">
+            <h3>Готовые вызовы</h3>
+            <span>нажмите, чтобы загрузить</span>
+          </div>
+          <div class="preset-list" id="presetList"></div>
+        </aside>
+      </div>
+
+      <footer class="modal-foot">
+        <button class="ghost-btn" type="button" id="randomBtn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="m15 15 6 6"/><path d="m4 4 5 5"/></svg>
+          Случайная
+        </button>
+        <span class="foot-spacer"></span>
+        <button class="ghost-btn" type="button" data-close-modal>Отмена</button>
+        <button class="solid-btn" type="button" id="createBoardBtn">Открыть доску <span aria-hidden="true">→</span></button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="modal-layer" id="helpModal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal help-modal" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+      <header class="modal-head">
+        <div>
+          <p class="kicker"><span class="kicker-line"></span>три шага</p>
+          <h2 id="helpModalTitle">Как это работает</h2>
+        </div>
+        <button class="icon-btn close-btn" type="button" data-close-modal aria-label="Закрыть">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg>
+        </button>
+      </header>
+      <div class="help-body">
+        <ol class="how-list">
+          <li><span class="how-num">1</span><div><strong>Выберите «откуда»</strong><p>Кликните по строке, из которой будете вычитать. Она подсветится фиолетовым.</p></div></li>
+          <li><span class="how-num">2</span><div><strong>Выберите «куда»</strong><p>Кликните по строке-цели. Появится живой предпросмотр результата.</p></div></li>
+          <li><span class="how-num">3</span><div><strong>Задайте множитель</strong><p>Введите <code>2</code>, <code>1/2</code> или <code>−3/4</code> и нажмите «Вычесть».</p></div></li>
+        </ol>
+        <div class="help-notes">
+          <div class="note-card"><span class="note-icon">◎</span><div><strong>Цель</strong><p>Ступенчатый вид: ведущие единицы, нули под ними. Приведённый — ещё и нули над ними.</p></div></div>
+          <div class="note-card"><span class="note-icon">✦</span><div><strong>Точность</strong><p>Все вычисления идут в рациональных дробях. Никаких округлений и «почти нулей».</p></div></div>
+          <div class="note-card"><span class="note-icon">A⁻¹</span><div><strong>Обратная матрица</strong><p>Включите режим «Обратная»: A дополнится единичной I. Приведите левую часть к I — справа появится A⁻¹.</p></div></div>
+          <div class="note-card"><span class="note-icon">X</span><div><strong>A·X = B</strong><p>Соберите A и B. После приведения A к I правая часть станет решением X = A⁻¹B.</p></div></div>
+        </div>
+        <div class="shortcut-grid">
+          <span><kbd>1</kbd>–<kbd>4</kbd> операция</span>
+          <span><kbd>H</kbd> подсказка</span>
+          <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> отменить</span>
+          <span><kbd>Esc</kbd> сбросить выбор</span>
+          <span><kbd>↵</kbd> применить</span>
+          <span><kbd>?</kbd> помощь</span>
+        </div>
+      </div>
+      <footer class="modal-foot">
+        <span class="foot-quote">«Математика — это не скучные вычисления, а красивые ходы».</span>
+        <span class="foot-spacer"></span>
+        <button class="solid-btn" type="button" data-close-modal>К доске</button>
+      </footer>
+    </div>
+  </div>
+
+  <div class="win-layer" id="winOverlay" hidden>
+    <div class="win-backdrop"></div>
+    <div class="win-card" role="dialog" aria-modal="true" aria-labelledby="winTitle">
+      <div class="win-emblem" aria-hidden="true"><span>✓</span></div>
+      <p class="kicker win-kicker"><span class="kicker-line"></span>цель достигнута</p>
+      <h2 id="winTitle">Красивая лестница.</h2>
+      <p class="win-sub" id="winSub">Матрица приведена к ступенчатому виду за 6 ходов.</p>
+      <div class="win-matrix" id="winMatrix" aria-label="Итоговая матрица"></div>
+      <div class="win-solution" id="winSolution"></div>
+      <div class="win-actions">
+        <button class="solid-btn" type="button" id="nextChallengeBtn">Следующий вызов <span aria-hidden="true">→</span></button>
+        <button class="ghost-btn" type="button" id="stayBtn">Полюбоваться</button>
+      </div>
+      <div class="win-achievements" id="winAchievements"></div>
+    </div>
+  </div>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite" aria-atomic="false"></div>
+
+  <script type="module" src="/static/app.js"></script>
+</body>
+</html>
